@@ -1,0 +1,29 @@
+body {
+        /* background: linear-gradient(135deg, #41467c 0%, #1e2141 100%); */
+        /* background: linear-gradient(135deg, #11245a 0%, #000000 100%); */
+        background: #1e2141;
+        height: fit-content;
+    }
+
+
+.btn-login{
+    background-color: #2b2f5c;
+    border-color: #5c5f7a;
+}
+.btn-login:hover{
+    background-color: #434981;
+}
+.btn-login:active{
+    background-color: #1e2141;
+}
+
+.text-body-genobank{
+    color: linear-gradient(135deg, #49BA80 0%, #009ABB 33%, #344DA1 66%, #B03C96 100%);
+}
+
+.toast {
+  position: fixed;
+  bottom: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+}

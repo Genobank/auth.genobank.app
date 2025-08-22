@@ -1,0 +1,216 @@
+
+(async () => {
+    try {
+        let container = document.getElementById("genobank-oauth-button");
+        container.innerHTML = `
+            <button id="openGenobankBtn">Open Genobank Authentication</button>
+        `;
+        document.getElementById("openGenobankBtn")
+            .addEventListener("click", async () => {
+                try {
+                    const result = await openPopup();
+                } catch (err) {
+                    console.error("Error closed popup:", err);
+                }
+            });
+
+        const params = new URLSearchParams(window.location.search);
+        const encodedData = params.get("data");
+        
+        if (encodedData) {
+            try {
+                const decoded = atob(encodedData).replace(/'/g, '"');
+                const genoBankJWT = decoded;
+                if (genoBankJWT) { // Corregido: verificar genoBankJWT
+                    const genobankLogin = await verifyJWT(genoBankJWT);
+                    saveUserLogin(genobankLogin?.payload?.genobank_login);
+                    clearQueryParams()
+                }
+            } catch (err) {
+                console.error("❌ Error during decoding 'data':", err.message);
+            }
+        }
+    } catch (e) {
+        // console.error("Error general:", e);
+    }
+})();
+
+
+function openPopup(onFinishCallback = () => {}) {
+    return new Promise((resolve, reject) => {
+        const data = btoa(`{'isPopup':true, 'source':'${window.location.href}'}`);
+        const url = `../?data=${data}`;
+        const titulo = "title window";
+        const windowWidth = 450;
+        const windowHeight = 700;
+        const { left, top } = getLeftAndTop(windowWidth, windowHeight);
+        const opciones = `
+            width=${windowWidth},
+            height=${windowHeight},
+            top=${top},
+            left=${left},
+            toolbar=no,
+            location=no,
+            status=no,
+            menubar=no,
+            scrollbars=no,
+            resizable=no
+        `.replace(/\s+/g, '');
+        const popup = window.open(url, titulo, opciones);
+
+        if (!popup) {
+            reject("Navigarot lock the popup");
+            return;
+        }
+        function handler(event) {
+            if (event.data.genobankLogin === undefined) return;
+            saveUserLogin(event.data.genobankLogin);
+            try {
+                onFinishCallback(event.data.genobankLogin);
+            } catch (err) {
+                console.error("CallBack error:", err);
+            }
+            window.removeEventListener("message", handler);
+            resolve(event.data);
+        }
+        window.addEventListener("message", handler);
+        const timer = setInterval(() => {
+            if (popup.closed) {
+                clearInterval(timer);
+                window.removeEventListener("message", handler);
+                reject("El popup fue cerrado sin enviar datos");
+            }
+        }, 500);
+    });
+}
+
+
+function getLeftAndTop(windowWidth, windowHeight){
+    const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : window.screenX;
+    const dualScreenTop = window.screenTop !== undefined ? window.screenTop : window.screenY;
+    const width = window.innerWidth 
+        ? window.innerWidth 
+        : document.documentElement.clientWidth 
+            ? document.documentElement.clientWidth 
+            : screen.width;
+
+    const height = window.innerHeight 
+        ? window.innerHeight 
+        : document.documentElement.clientHeight 
+            ? document.documentElement.clientHeight 
+            : screen.height;
+    const left = dualScreenLeft + (width - windowWidth) / 2;
+    const top = dualScreenTop + (height - windowHeight) / 2;
+    return {
+        left: left,
+        top: top
+    }
+}
+
+
+
+function redirectWithEncryptedData() {
+    const data = btoa(`{'isPopup':false,'source':'${window.location.origin}${window.location.pathname}'}`);
+    location.href = `../?data=${data}`;
+}
+
+function getUserWallet() {
+    return localStorage.getItem('user_wallet');
+}
+
+function getLoginMethod() {
+    return localStorage.getItem('login_method');
+}
+
+function isLoggedIn() {
+    let loggedUserSignature = getUserSignature();
+    let didToken = getDidToken();
+    return !!loggedUserSignature || !!didToken;
+}
+
+function getUserSignature(){
+    const userToken = localStorage.getItem('user_signature');
+    return userToken;
+}
+
+function getDidToken(){
+    return localStorage.getItem('magic_token')
+}
+
+function removeUserTokens() {
+    localStorage.removeItem('magic_token');
+    localStorage.removeItem('user_signature');
+    localStorage.removeItem('user_wallet');
+    localStorage.removeItem('login_method');
+    localStorage.removeItem('isPermittee');
+    localStorage.removeItem('email');
+    localStorage.removeItem('name');
+    localStorage.removeItem('picture');
+    localStorage.removeItem('registration');
+}
+
+function saveUserLogin(genobankLogin){
+    localStorage.setItem('user_wallet', genobankLogin.userWallet)
+    localStorage.setItem('user_signature', genobankLogin.userSignature)
+    localStorage.setItem('login_method', genobankLogin.loginMethod)
+    if (genobankLogin?.magicToken != undefined){
+        localStorage.setItem('magic_token', genobankLogin?.magicToken )
+    }
+    if (genobankLogin?.email!== undefined){
+        localStorage.setItem('email', genobankLogin.email)
+    }
+    if (genobankLogin?.name!== undefined){
+        localStorage.setItem('name', genobankLogin.name)
+    }
+    if (genobankLogin?.picture!== undefined){
+        localStorage.setItem('picture', genobankLogin.picture)
+    }
+    if (genobankLogin?.registration!== undefined){
+        localStorage.setItem('registration', genobankLogin.registration)
+    }
+}
+
+
+async function getValidatePermittee(address) {
+	const url = new URL(`https://genobank.app/validate_permittee`)
+	url.searchParams.append('permittee', address);
+	return fetch(url, {
+		method: 'GET',
+		headers: {
+			"Content-type": "application/json; charset=UTF-8"
+		},
+	}).then((res) => {
+		return res.json();
+	}).catch((e) => {
+		return { errors: [{ message: e }] };
+	});
+}
+
+
+async function verifyJWT(genoBankJWT) {
+	// const url = new URL(`https://genobank.app/verify_jwt`)
+	const url = new URL(`http://localhost:8081/verify_jwt`)
+	return fetch(url, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+            "jwt": genoBankJWT
+        })
+	}).then(response => response.json())
+		.catch(error => console.error('Error:', error));
+}
+
+function clearQueryParams(){
+    const url = new URL(window.location);
+    url.search = '';
+    window.history.replaceState({}, '', url);
+}
+
+function logout(reload=false){
+    removeUserTokens()
+    if (reload){
+        window.location.reload()
+    }
+}

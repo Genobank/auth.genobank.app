@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GenoBank.io auth process</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap libraries -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.2.0/ethers.umd.min.js"
+        integrity="sha512-YrJ7ZzmtmVJdwCwu6B91ThUGLfNjsTdHf1IdPf3J7AZQIpVDvahcBLWoKC1ebZ9RN6upm9ZheIFKSf7s7k/ZYQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/3.0.0-rc.5/web3.min.js"
+        integrity="sha512-jRzb6jM5wynT5UHyMW2+SD+yLsYPEU5uftImpzOcVTdu1J7VsynVmiuFTsitsoL5PJVQi+OtWbrpWq/I+kkF4Q=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon.ico">
+    <!-- magic libraries -->
+    <script src="https://auth.magic.link/sdk"></script>
+    <script src="https://cdn.jsdelivr.net/npm/magic-sdk/dist/magic.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@magic-ext/oauth/dist/extension.js"></script>
+    <!-- wallet connect cdns-->
+    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/client@1.4.1/dist/umd/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.5.1/dist/umd/index.min.js"></script>
+
+    <link href="style.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="d-flex align-items-center vh-100">
+        <div class="d-flex justify-content-center w-100 p-2">
+            <div class="card rounded-3" style="width: 25rem;">
+                <div class="card-body p-0">
+                    <div class="p-4">
+                        <div class="text-center">
+                            <img src="img/GenoBank.io_logo.svg" alt="" style="width: 14rem;">
+                        </div>
+                        <div class="mt-4 mb-4">
+                            <h5 class="h1 fs-5">Secure Authentication Portal</h5>
+                            <p class=" fs-6 text-body-tertiary">Connect your wallet to access genomic services</p>
+                        </div>
+                        <div class="mt-5 d-grid gap-2">
+                            <button class="btn btn-light btn-lg rounded-0 border border-light-subtle" type="button"
+                                onclick="loginUsingMetamask()" id="id-metamask-button">
+                                <i class="bi bi-wallet-fill"></i>
+                                <span class="h6">Browser Wallet</span>
+                            </button>
+                            <button class="btn btn-light btn-lg rounded-0 border border-light-subtle" type="button"
+                                onclick="loginUsingGoogle()" id="id-google-button">
+                                <img src="img/google-logo.svg" alt="" style="height: 32px;">
+                                <span class="h6">Continue with Google</span>
+                            </button>
+                            <button class="btn btn-light btn-lg rounded-0 border border-light-subtle" type="button"
+                                onclick="logginUsingWalletConnect()" id="id-wallet-connect-button">
+                                <img src="img/walletconnect-logo.svg" alt="" style="width: 32px;">
+                                <span class="h6">Wallet Connect</span>
+                            </button>
+                        </div>
+                    </div>
+                    <hr class="mt-2 mb-1 " style="color: rgb(168, 168, 168);">
+                    <div class="p-4">
+                        <div class="mb-3">
+                            <label for="emailInput" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="emailInput" placeholder="name@example.com">
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary btn-login" type="button"
+                                onclick="loginUsingEmailHandler()" id="id-email-button">Log in</button>
+                        </div>
+                        <div class="mt-2 text-body-tertiary text-center">
+                            By continuing, you agree to our <a href="https://genobank.io/privacy-policy"
+                                class="text-body-genobank">Privacy Policy</a>
+                            <div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="toast align-items-center text-bg-danger border-0 " role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                </div>
+                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <section>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q"
+            crossorigin="anonymous"></script>
+        <script src="env.min.js"></script>
+        <script src="genobank_oauth.min.js"></script>
+        <script src="custom.min.js"></script>
+        <script src="walletConnectConnection.min.js" type="module"></script>
+    </section>
+</body>
+
+</html>

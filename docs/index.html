@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenoBank OAuth Library - Documentation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+<body class="bg-light">
+    <!-- Top Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold fs-4" href="#">GenoBank OAuth</a>
+            <span class="badge bg-success">v1.0.0</span>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-lg-2 d-lg-block bg-white border-end vh-100 position-sticky top-0 pt-4">
+                <div class="px-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item mb-2">
+                            <a class="nav-link text-dark fw-semibold py-2" href="#getting-started">Getting Started</a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link text-muted py-2" href="#installation">Installation</a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link text-muted py-2" href="#html-example">HTML Example</a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link text-muted py-2" href="#javascript-example">JavaScript</a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link text-muted py-2" href="#live-demo">Demo</a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a class="nav-link text-muted py-2" href="#api-reference">API Reference</a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-lg-10 px-5 py-4">
+                <!-- Hero Section -->
+                <section id="getting-started" class="mb-5">
+                    <div class="text-center py-5 mb-5">
+                        <a href="https://genobank.io/"><img src="../img/GenoBank.io_logo.svg" alt="genobank.io"></a>
+                        <h1 class="h2 text-dark ">OAuth</h1>
+                        <p class="lead text-muted mb-5 mx-auto mt-4" style="max-width: 600px;">Secure authentication for modern web applications. Simple integration, enterprise-grade security.</p>
+                        <div class="d-flex justify-content-center gap-2">
+                            <span class="badge text-muted border-0 bg-transparent">JavaScript</span>
+                            <span class="text-muted">•</span>
+                            <span class="badge text-muted border-0 bg-transparent">OAuth 2.0</span>
+                            <span class="text-muted">•</span>
+                            <span class="badge text-muted border-0 bg-transparent">Secure</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Installation -->
+                <section id="installation" class="mb-5">
+                    <div class="bg-white rounded-3 border-0 shadow-sm p-5">
+                        <h2 class="h3 fw-light text-dark mb-4">Installation</h2>
+                        <p class="text-muted mb-5">Add the GenoBank OAuth library to your project.</p>
+                        
+                        <div class="position-relative bg-dark rounded-3 p-4">
+                            <button class="btn btn-light btn-sm position-absolute top-0 end-0 m-3 border-0" onclick="copyToClipboard('cdn-code')">Copy</button>
+                            <pre class="mb-0 text-light"><code id="cdn-code" class="language-html">&lt;script src="<span id="dynamic-cdn-url" class="text-warning"></span>"&gt;&lt;/script&gt;</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- HTML Example -->
+                <section id="html-example" class="mb-5">
+                    <div class="bg-white rounded-3 border-0 shadow-sm p-5">
+                        <h2 class="h3 fw-light text-dark mb-4">HTML Implementation</h2>
+                        <p class="text-muted mb-5">Complete structure for integrating authentication.</p>
+                        
+                        <div class="position-relative bg-dark rounded-3 p-4">
+                            <button class="btn btn-light btn-sm position-absolute top-0 end-0 m-3 border-0" onclick="copyToClipboard('html-example-code')">Copy</button>
+                            <pre class="mb-0 text-light" style="font-size: 0.85rem; line-height: 1.6;"><code id="html-example-code" class="language-html">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;GenoBank OAuth Example&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;GenoBank OAuth Integration&lt;/h1&gt;
+    
+    &lt;!-- Login Section --&gt;
+    &lt;div&gt;
+        &lt;h2&gt;Login&lt;/h2&gt;
+        &lt;div id="genobank-oauth-button"&gt;&lt;/div&gt;
+        &lt;button onclick="myCustomOpenPopup()"&gt;Custom Open Popup Button&lt;/button&gt;
+        &lt;button onclick="myCustomRedirectToGenobankLogin()"&gt;Redirect to GenoBank Login&lt;/button&gt;
+    &lt;/div&gt;
+
+    &lt;hr&gt;
+
+    &lt;!-- User Data Section --&gt;
+    &lt;div&gt;
+        &lt;h2&gt;User Data&lt;/h2&gt;
+        &lt;button onclick="getUserWallet()"&gt;Get User Wallet&lt;/button&gt;
+        &lt;p id="id-user-wallet"&gt;&lt;/p&gt;
+        
+        &lt;button onclick="getUserSignature()"&gt;Get User Signature&lt;/button&gt;
+        &lt;p id="id-user-signature"&gt;&lt;/p&gt;
+    &lt;/div&gt;
+
+    &lt;hr&gt;
+
+    &lt;!-- Logout Section --&gt;
+    &lt;div&gt;
+        &lt;h2&gt;Logout&lt;/h2&gt;
+        &lt;button onclick="mycustomLogout()"&gt;Logout&lt;/button&gt;
+        &lt;button onclick="mycustomLogout(true)"&gt;Logout with Reload&lt;/button&gt;
+    &lt;/div&gt;
+
+    &lt;script src="<span id="html-cdn-url" class="text-warning"></span>"&gt;&lt;/script&gt;
+    &lt;script src="your-script.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- JavaScript Example -->
+                <section id="javascript-example" class="mb-5">
+                    <div class="bg-white rounded-3 border-0 shadow-sm p-5">
+                        <h2 class="h3 fw-light text-dark mb-4">JavaScript Integration</h2>
+                        <p class="text-muted mb-5">Implementation code for handling authentication flows.</p>
+                        
+                        <div class="position-relative bg-dark rounded-3 p-4">
+                            <button class="btn btn-light btn-sm position-absolute top-0 end-0 m-3 border-0" onclick="copyToClipboard('js-example-code')">Copy</button>
+                            <pre class="mb-0 text-light" style="font-size: 0.85rem; line-height: 1.6;"><code id="js-example-code" class="language-javascript">// Initialize GenoBank OAuth
+const genoBankLogin = new GenoBankLogin();
+genoBankLogin.init();
+
+// Custom popup login
+function myCustomOpenPopup() {
+    genoBankLogin.openPopup();
+}
+
+// Redirect to GenoBank login
+function myCustomRedirectToGenobankLogin() {
+    genoBankLogin.redirectWithEncryptedData();
+}
+
+// Custom logout function
+function mycustomLogout(reload = false) {
+    genoBankLogin.logout(reload);
+}
+
+// Get user wallet information
+function getUserWallet() {
+    let userWalletLabel = document.getElementById("id-user-wallet");
+    const userWallet = genoBankLogin.getUserWallet();
+    userWalletLabel.innerText = userWallet;
+}
+
+// Get user signature
+function getUserSignature() {
+    let userSignatureLabel = document.getElementById("id-user-signature");
+    const userSignature = genoBankLogin.getUserSignature();
+    userSignatureLabel.innerText = userSignature;
+}</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Live Demo -->
+                <section id="live-demo" class="mb-5">
+                    <div class="bg-white rounded-3 border-0 shadow-sm p-5">
+                        <h2 class="h3 fw-light text-dark mb-5">Interactive Demo</h2>
+                        
+                        <!-- Login Methods -->
+                        <div class="mb-5">
+                            <h5 class="fw-normal text-dark mb-4 fs-6 text-uppercase letter-spacing-1 text-muted">Authentication</h5>
+                            <div class="d-flex flex-wrap gap-3">
+                                <div id="genobank-oauth-button"></div>
+                                <button class="btn btn-primary rounded-pill px-4" onclick="myCustomOpenPopup()">Popup Login</button>
+                                <button class="btn btn-outline-primary rounded-pill px-4" onclick="myCustomRedirectToGenobankLogin()">Redirect</button>
+                            </div>
+                        </div>
+
+                        <!-- User Information -->
+                        <div class="mb-5">
+                            <h5 class="fw-normal text-dark mb-4 fs-6 text-uppercase letter-spacing-1 text-muted">User Data</h5>
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <button class="btn btn-light rounded-pill btn-sm mb-3 px-3" onclick="getUserWallet()">Get Wallet</button>
+                                    <div class="bg-light rounded-3 p-4 border-0">
+                                        <small class="text-muted text-uppercase fw-light mb-2 d-block">Wallet Address</small>
+                                        <span id="id-user-wallet" class="font-monospace small text-dark">Not authenticated</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <button class="btn btn-light rounded-pill btn-sm mb-3 px-3" onclick="getUserSignature()">Get Signature</button>
+                                    <div class="bg-light rounded-3 p-4 border-0">
+                                        <small class="text-muted text-uppercase fw-light mb-2 d-block">Digital Signature</small>
+                                        <span id="id-user-signature" class="font-monospace small text-dark">Not authenticated</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Session Management -->
+                        <div>
+                            <h5 class="fw-normal text-dark mb-4 fs-6 text-uppercase letter-spacing-1 text-muted">Session</h5>
+                            <div class="d-flex gap-3">
+                                <button class="btn btn-outline-secondary rounded-pill px-4" onclick="mycustomLogout()">Logout</button>
+                                <button class="btn btn-secondary rounded-pill px-4" onclick="mycustomLogout(true)">Logout & Reload</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- API Reference -->
+                <section id="api-reference" class="mb-5">
+                    <div class="bg-white rounded-3 border-0 shadow-sm p-5">
+                        <h2 class="h3 fw-light text-dark mb-5">API Reference</h2>
+                        <div class="table-responsive">
+                            <table class="table table-borderless align-middle">
+                                <thead>
+                                    <tr class="border-bottom border-light">
+                                        <th class="fw-light text-muted py-4 text-uppercase small">Method</th>
+                                        <th class="fw-light text-muted py-4 text-uppercase small">Description</th>
+                                        <th class="fw-light text-muted py-4 text-uppercase small">Parameters</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-bottom border-light">
+                                        <td class="py-4"><code class="bg-light px-3 py-2 rounded-pill text-dark fw-normal">init()</code></td>
+                                        <td class="py-4 text-muted fw-light">Initialize the GenoBank OAuth library</td>
+                                        <td class="py-4"><span class="text-muted fw-light">None</span></td>
+                                    </tr>
+                                    <tr class="border-bottom border-light">
+                                        <td class="py-4"><code class="bg-light px-3 py-2 rounded-pill text-dark fw-normal">openPopup()</code></td>
+                                        <td class="py-4 text-muted fw-light">Open authentication popup window</td>
+                                        <td class="py-4"><span class="text-muted fw-light">None</span></td>
+                                    </tr>
+                                    <tr class="border-bottom border-light">
+                                        <td class="py-4"><code class="bg-light px-3 py-2 rounded-pill text-dark fw-normal">redirectWithEncryptedData()</code></td>
+                                        <td class="py-4 text-muted fw-light">Redirect to GenoBank login page</td>
+                                        <td class="py-4"><span class="text-muted fw-light">None</span></td>
+                                    </tr>
+                                    <tr class="border-bottom border-light">
+                                        <td class="py-4"><code class="bg-light px-3 py-2 rounded-pill text-dark fw-normal">logout(reload)</code></td>
+                                        <td class="py-4 text-muted fw-light">Terminate user session</td>
+                                        <td class="py-4"><code class="text-primary fw-normal">reload</code> <span class="text-muted fw-light">(boolean)</span></td>
+                                    </tr>
+                                    <tr class="border-bottom border-light">
+                                        <td class="py-4"><code class="bg-light px-3 py-2 rounded-pill text-dark fw-normal">getUserWallet()</code></td>
+                                        <td class="py-4 text-muted fw-light">Retrieve user's wallet address</td>
+                                        <td class="py-4"><span class="text-muted fw-light">None</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-4"><code class="bg-light px-3 py-2 rounded-pill text-dark fw-normal">getUserSignature()</code></td>
+                                        <td class="py-4 text-muted fw-light">Retrieve user's digital signature</td>
+                                        <td class="py-4"><span class="text-muted fw-light">None</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q"
+        crossorigin="anonymous"></script>
+
+    <script>
+        // Initialize syntax highlighting
+        hljs.highlightAll();
+
+        // Calculate dynamic CDN URL
+        function updateDynamicCDN() {
+            const currentHost = window.location.protocol + '//' + window.location.host;
+            const cdnUrl = currentHost + '/genobank_oauth.min.js';
+            
+            document.getElementById('dynamic-cdn-url').textContent = cdnUrl;
+            document.getElementById('html-cdn-url').textContent = cdnUrl;
+        }
+
+        // Copy to clipboard function
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent || element.innerText;
+            
+            navigator.clipboard.writeText(text).then(function() {
+                const codeBlock = element.closest('.position-relative');
+                const copyBtn = codeBlock.querySelector('button');
+                
+                const originalText = copyBtn.textContent;
+                const originalClass = copyBtn.className;
+                copyBtn.textContent = 'Copied';
+                copyBtn.className = 'btn btn-success btn-sm position-absolute top-0 end-0 m-3';
+                
+                setTimeout(function() {
+                    copyBtn.textContent = originalText;
+                    copyBtn.className = originalClass;
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Could not copy text: ', err);
+            });
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDynamicCDN();
+            
+            const script = document.createElement('script');
+            const currentHost = window.location.protocol + '//' + window.location.host;
+            script.src = currentHost + '/genobank_oauth.min.js';
+            script.onload = function() {
+                if (typeof GenoBankLogin !== 'undefined') {
+                    initializeRealDemo();
+                } else {
+                    initializeMockDemo();
+                }
+            };
+            script.onerror = function() {
+                initializeMockDemo();
+            };
+            document.head.appendChild(script);
+        });
+
+        // Initialize real demo with actual library
+        function initializeRealDemo() {
+            window.genoBankLogin = new GenoBankLogin();
+            genoBankLogin.init();
+        }
+
+        // Initialize mock demo
+        function initializeMockDemo() {
+            let mockLoggedIn = false;
+            let mockWallet = "0x742d35Cc...0a12f";
+            let mockSignature = "0x1b4f...a7b2";
+
+            window.GenoBankLogin = function() {
+                return {
+                    init: function() {
+                        const buttonContainer = document.getElementById('genobank-oauth-button');
+                        if (buttonContainer) {
+                            buttonContainer.innerHTML = '<button class="btn btn-success">Connect GenoBank</button>';
+                            buttonContainer.addEventListener('click', function() {
+                                mockLoggedIn = true;
+                                document.getElementById('id-user-wallet').textContent = mockWallet;
+                                document.getElementById('id-user-signature').textContent = mockSignature;
+                            });
+                        }
+                    },
+                    openPopup: function() {
+                        mockLoggedIn = true;
+                        document.getElementById('id-user-wallet').textContent = mockWallet;
+                        document.getElementById('id-user-signature').textContent = mockSignature;
+                    },
+                    redirectWithEncryptedData: function() {
+                        // Mock redirect behavior
+                        mockLoggedIn = true;
+                    },
+                    logout: function(reload) {
+                        mockLoggedIn = false;
+                        document.getElementById('id-user-wallet').textContent = 'Not authenticated';
+                        document.getElementById('id-user-signature').textContent = 'Not authenticated';
+                        if (reload) {
+                            location.reload();
+                        }
+                    },
+                    getUserWallet: function() {
+                        return mockLoggedIn ? mockWallet : null;
+                    },
+                    getUserSignature: function() {
+                        return mockLoggedIn ? mockSignature : null;
+                    }
+                };
+            };
+
+            window.genoBankLogin = new GenoBankLogin();
+            genoBankLogin.init();
+        }
+
+        // Demo functions
+        function myCustomOpenPopup() {
+            genoBankLogin.openPopup();
+        }
+
+        function myCustomRedirectToGenobankLogin() {
+            genoBankLogin.redirectWithEncryptedData();
+        }
+
+        function mycustomLogout(reload = false) {
+            genoBankLogin.logout(reload);
+        }
+
+        function getUserWallet() {
+            let userWalletLabel = document.getElementById("id-user-wallet");
+            const userWallet = genoBankLogin.getUserWallet();
+            userWalletLabel.innerText = userWallet || 'Not authenticated';
+        }
+
+        function getUserSignature() {
+            let userSignatureLabel = document.getElementById("id-user-signature");
+            const userSignature = genoBankLogin.getUserSignature();
+            userSignatureLabel.innerText = userSignature || 'Not authenticated';
+        }
+    </script>
+</body>
+</html>

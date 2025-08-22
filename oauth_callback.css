@@ -1,0 +1,73 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.container {
+    position: relative;
+    text-align: center;
+}
+
+.logos {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.logo {
+    height: 75px; /* Altura de los logos */
+    width: auto;  /* Ancho automático para mantener proporciones */
+    opacity: 0;
+    position: relative;
+}
+
+.genobank, .google {
+    animation: fadeIn 1s forwards, moveTogether 1s forwards 1s;
+}
+
+.genobank {
+    transform: translateX(-100px); /* Inicia a la izquierda */
+}
+
+.google {
+    transform: translateX(100px); /* Inicia a la derecha */
+}
+
+.spinner-container {
+    margin-top: 50px; 
+    /*display: flex;
+    justify-content: center; */
+    opacity: 0;
+    animation: fadeInSpinner 1s forwards 2s; 
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes moveTogether {
+    to {
+        transform: translateX(0); /* Mueve los logos al centro */
+    }
+}
+
+@keyframes fadeInSpinner {
+    to {
+        opacity: 1;
+    }
+}
+
+/* Ajuste del tamaño de los spinners */
+.spinner-grow {
+    margin: 0 3px;
+    width: 0.9rem; /* Tamaño reducido de los spinners */
+    height: 0.9rem;
+}
