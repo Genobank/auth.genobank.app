@@ -320,7 +320,7 @@ function getUserSignature() {
             
             const script = document.createElement('script');
             const currentHost = window.location.protocol + '//' + window.location.host;
-            script.src = currentHost + '/genobank_oauth.min.js';
+            script.src = currentHost + '/genobank_oauth.source.js';
             script.onload = function() {
                 if (typeof GenoBankLogin !== 'undefined') {
                     initializeRealDemo();
