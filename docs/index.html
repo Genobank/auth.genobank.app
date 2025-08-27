@@ -143,8 +143,8 @@ const genoBankLogin = new GenoBankLogin();
 genoBankLogin.init();
 
 // Custom popup login
-function myCustomOpenPopup() {
-    genoBankLogin.openPopup();
+async function myCustomOpenPopup() {
+    const userLogin = await genoBankLogin.openPopup();
 }
 
 // Redirect to GenoBank login
