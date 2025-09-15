@@ -567,7 +567,7 @@ function checkExistingAuth() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    AuthDebugger.log('=== Auth Service Initialized v2.3 (Signature-Based) ===');
+    AuthDebugger.log('=== Auth Service Initialized v2.4 (Fixed Redirect) ===');
     AuthDebugger.log('Current URL', window.location.href);
     AuthDebugger.log('Referrer', document.referrer);
 
@@ -576,10 +576,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Check if redirect is already in progress
     if (sessionStorage.getItem('authRedirectInProgress') === 'true') {
-        AuthDebugger.log('Redirect in progress, clearing flag');
+        AuthDebugger.log('Redirect was in progress, clearing flag');
         sessionStorage.removeItem('authRedirectInProgress');
-        hasCheckedAuth = true; // Don't check again
-        return;
+        // Don't return here - we still need to handle the page load
+        // Just prevent infinite redirect loops
+        hasCheckedAuth = true;
     }
 
     // Store return URL information using our enhanced storage
