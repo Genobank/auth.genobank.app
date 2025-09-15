@@ -403,9 +403,9 @@ function checkExistingAuth() {
 
         // Get return URL from parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const returnUrl = urlParams.get('returnUrl') ||
-                         urlParams.get('return_url') ||
-                         urlParams.get('redirect');
+        let returnUrl = urlParams.get('returnUrl') ||
+                       urlParams.get('return_url') ||
+                       urlParams.get('redirect');
 
         // Also check if we have a stored config with source
         const authConfig = sessionStorage.getItem('authConfig');
@@ -414,13 +414,28 @@ function checkExistingAuth() {
             try {
                 const config = JSON.parse(authConfig);
                 configSource = config.source;
+                AuthDebugger.log('Found stored config source', configSource);
             } catch (e) {
                 AuthDebugger.log('Could not parse authConfig', e);
             }
         }
 
-        // Determine where to redirect
-        const redirectTo = returnUrl || configSource;
+        // Determine where to redirect - prioritize URL params, then config, then referrer
+        let redirectTo = returnUrl || configSource;
+
+        // If still no redirect URL but we have a GenoBank referrer, use it
+        if (!redirectTo && document.referrer) {
+            try {
+                const referrerUrl = new URL(document.referrer);
+                if (referrerUrl.hostname.endsWith('genobank.app') ||
+                    referrerUrl.hostname.endsWith('genobank.io')) {
+                    redirectTo = document.referrer;
+                    AuthDebugger.log('Using referrer as redirect URL for authenticated user', redirectTo);
+                }
+            } catch (e) {
+                AuthDebugger.log('Could not parse referrer', e);
+            }
+        }
 
         if (redirectTo) {
             // Check if the redirect is coming from a GenoBank domain
@@ -440,9 +455,19 @@ function checkExistingAuth() {
             } catch (e) {
                 AuthDebugger.log('Invalid redirect URL', { redirectTo, error: e.message });
             }
+        } else {
+            // No redirect URL found, but user is authenticated - send to default dashboard
+            AuthDebugger.log('User authenticated, no redirect URL - sending to default dashboard');
+            const defaultDashboard = isPermittee === 'true'
+                ? 'https://genobank.io/consent/lab_biofile/'
+                : 'https://genobank.io/consent/biofile/';
+
+            sessionStorage.setItem('authRedirectInProgress', 'true');
+            window.location.href = defaultDashboard;
+            return true;
         }
 
-        AuthDebugger.log('User authenticated but no valid redirect URL - showing login page');
+        AuthDebugger.log('User authenticated but unable to determine redirect destination');
     } else {
         AuthDebugger.log('User not authenticated');
     }
@@ -456,21 +481,18 @@ document.addEventListener('DOMContentLoaded', function() {
     AuthDebugger.log('Current URL', window.location.href);
     AuthDebugger.log('Referrer', document.referrer);
 
+    // Reset the hasCheckedAuth flag on new page load
+    hasCheckedAuth = false;
+
     // Check if redirect is already in progress
     if (sessionStorage.getItem('authRedirectInProgress') === 'true') {
         AuthDebugger.log('Redirect in progress, clearing flag');
         sessionStorage.removeItem('authRedirectInProgress');
+        hasCheckedAuth = true; // Don't check again
         return;
     }
 
-    // Check if user is already authenticated (only on non-callback pages)
-    if (!window.location.pathname.includes('oauth-callback')) {
-        if (checkExistingAuth()) {
-            return; // User is being redirected
-        }
-    }
-
-    // Store return URL information if we have a referrer from GenoBank
+    // Store return URL information FIRST if we have a referrer from GenoBank
     const urlParams = new URLSearchParams(window.location.search);
     let returnUrl = urlParams.get('returnUrl') ||
                    urlParams.get('return_url') ||
@@ -498,6 +520,13 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         // Save for later use
         sessionStorage.setItem('authConfig', JSON.stringify(configData));
+    }
+
+    // Check if user is already authenticated (only on non-callback pages)
+    if (!window.location.pathname.includes('oauth-callback')) {
+        if (checkExistingAuth()) {
+            return; // User is being redirected
+        }
     }
 
     // Add debug console helper
