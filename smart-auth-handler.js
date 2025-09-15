@@ -171,7 +171,7 @@ const GENOBANK_SERVICES = {
 // Cookie utilities
 const AUTH_COOKIE_CONFIG = {
     domain: '.genobank.app',
-    maxAge: 86400, // 24 hours
+    maxAge: 604800, // 7 days to match user expectations
     secure: true,
     sameSite: 'lax', // Use 'lax' for cross-site navigation
     path: '/'
@@ -180,6 +180,7 @@ const AUTH_COOKIE_CONFIG = {
 function setAuthCookie(name, value, maxAge = AUTH_COOKIE_CONFIG.maxAge) {
     if (!value) return;
 
+    // Set cookie for .genobank.app domain (works across subdomains)
     let cookieString = `${name}=${encodeURIComponent(value)}; ` +
         `domain=${AUTH_COOKIE_CONFIG.domain}; ` +
         `path=${AUTH_COOKIE_CONFIG.path}; ` +
@@ -192,6 +193,19 @@ function setAuthCookie(name, value, maxAge = AUTH_COOKIE_CONFIG.maxAge) {
     }
 
     document.cookie = cookieString;
+
+    // Also set without domain for current domain
+    let localCookieString = `${name}=${encodeURIComponent(value)}; ` +
+        `path=${AUTH_COOKIE_CONFIG.path}; ` +
+        `max-age=${maxAge}; ` +
+        `samesite=${AUTH_COOKIE_CONFIG.sameSite}`;
+
+    if (window.location.protocol === 'https:') {
+        localCookieString += '; secure';
+    }
+
+    document.cookie = localCookieString;
+
     AuthDebugger.log(`Set cookie: ${name}`, value.substring(0, 20) + '...');
 }
 
@@ -457,28 +471,31 @@ async function smartFinishingLoginProcess(loginData) {
         return;
     }
 
-    // Generate JWT for authentication
-    AuthDebugger.log('Generating JWT');
-    const authJWT = await generateAuthJWT(loginData);
-    if (!authJWT?.jwt) {
-        AuthDebugger.log('Failed to generate JWT - continuing without it');
-    } else {
-        AuthDebugger.log('JWT generated successfully');
-    }
-
     // Determine the final redirect URL
     const finalUrl = determineRedirectUrl(returnUrl, loginData.isPermittee);
     AuthDebugger.log('Final redirect URL', finalUrl);
 
-    // Add auth data to URL if JWT exists
-    if (authJWT?.jwt) {
-        const separator = finalUrl.includes('?') ? '&' : '?';
-        const redirectUrl = finalUrl + separator + 'data=' + btoa(authJWT.jwt);
-        AuthDebugger.log('Redirecting with JWT', redirectUrl);
-        window.location.href = redirectUrl;
+    // Check if we need to generate JWT based on login method
+    const needsJWT = loginData.login_method === 'magic' || loginData.login_method === 'magic_email';
+
+    if (needsJWT) {
+        // Magic Link methods may need JWT for backward compatibility
+        AuthDebugger.log('Magic Link auth - generating JWT');
+        const authJWT = await generateAuthJWT(loginData);
+
+        if (authJWT?.jwt) {
+            const separator = finalUrl.includes('?') ? '&' : '?';
+            const redirectUrl = finalUrl + separator + 'data=' + btoa(authJWT.jwt);
+            AuthDebugger.log('Redirecting with JWT', redirectUrl);
+            window.location.href = redirectUrl;
+        } else {
+            // Failed to generate JWT, redirect anyway (cookies have auth)
+            AuthDebugger.log('JWT generation failed, redirecting with cookies', finalUrl);
+            window.location.href = finalUrl;
+        }
     } else {
-        // Redirect without JWT - cookies should handle auth
-        AuthDebugger.log('Redirecting without JWT (using cookies)', finalUrl);
+        // For MetaMask and WalletConnect, user_signature in cookies is sufficient
+        AuthDebugger.log(`${loginData.login_method} auth - redirecting with cookies`, finalUrl);
         window.location.href = finalUrl;
     }
 }
@@ -550,7 +567,7 @@ function checkExistingAuth() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    AuthDebugger.log('=== Auth Service Initialized v2.2 (Cookie-Enhanced) ===');
+    AuthDebugger.log('=== Auth Service Initialized v2.3 (Signature-Based) ===');
     AuthDebugger.log('Current URL', window.location.href);
     AuthDebugger.log('Referrer', document.referrer);
 

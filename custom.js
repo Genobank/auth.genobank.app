@@ -210,22 +210,50 @@ async function finishingLoginProcess(loginData) {
     if (config.isPopup) {
         sendToParent(config?.source, loginData);
     } else {
-        const authJWT = await generateAuthJWT(loginData);
+        // Determine the correct redirect URL
         const urlParams = new URLSearchParams(window.location.search);
         const returnUrl = urlParams.get('returnUrl') ||
                          urlParams.get('return_url') ||
                          config?.source;
 
+        let finalRedirectUrl;
+
         if (returnUrl) {
-            const separator = returnUrl.includes('?') ? '&' : '?';
-            window.location.href = returnUrl + separator + 'data=' + btoa(authJWT?.jwt || '');
-        } else {
-            // Fallback based on permittee status
-            if (loginData.isPermittee) {
-                window.location.href = 'https://genobank.io/consent/lab_biofile/?data=' + btoa(authJWT?.jwt || '');
-            } else {
-                window.location.href = 'https://genobank.io/consent/biofile/?data=' + btoa(authJWT?.jwt || '');
+            // Check if returnUrl is just the homepage
+            try {
+                const url = new URL(returnUrl);
+                if (url.hostname === 'genobank.io' && url.pathname === '/') {
+                    // User came from homepage, redirect to appropriate dashboard
+                    finalRedirectUrl = loginData.isPermittee
+                        ? 'https://genobank.io/consent/lab_biofile/'
+                        : 'https://genobank.io/consent/biofile/';
+                } else {
+                    // Use the specific return URL
+                    finalRedirectUrl = returnUrl;
+                }
+            } catch (e) {
+                // Invalid URL, use fallback
+                finalRedirectUrl = loginData.isPermittee
+                    ? 'https://genobank.io/consent/lab_biofile/'
+                    : 'https://genobank.io/consent/biofile/';
             }
+        } else {
+            // No return URL, use default dashboards
+            finalRedirectUrl = loginData.isPermittee
+                ? 'https://genobank.io/consent/lab_biofile/'
+                : 'https://genobank.io/consent/biofile/';
+        }
+
+        // Check login method to determine if we need JWT
+        if (loginData.login_method === 'magic' || loginData.login_method === 'magic_email') {
+            // Magic Link methods may need JWT for additional data
+            const authJWT = await generateAuthJWT(loginData);
+            const separator = finalRedirectUrl.includes('?') ? '&' : '?';
+            window.location.href = finalRedirectUrl + separator + 'data=' + btoa(authJWT?.jwt || '');
+        } else {
+            // For MetaMask and WalletConnect, authentication is done via cookies/localStorage
+            // The user_signature is already stored, just redirect
+            window.location.href = finalRedirectUrl;
         }
     }
 }
