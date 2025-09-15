@@ -64,10 +64,15 @@ const GENOBANK_SERVICES = {
         default: 'https://genobank.io/consent/biofile/',
         permittee: 'https://genobank.io/consent/lab_biofile/',
         paths: {
+            '/': 'https://genobank.io/',  // Return to homepage
             '/consent/biofile': 'https://genobank.io/consent/biofile/',
+            '/consent/biofile/': 'https://genobank.io/consent/biofile/',
             '/consent/lab_biofile': 'https://genobank.io/consent/lab_biofile/',
+            '/consent/lab_biofile/': 'https://genobank.io/consent/lab_biofile/',
             '/entry-point': 'https://genobank.io/entry-point/',
-            '/login': 'https://genobank.io/login/'
+            '/entry-point/': 'https://genobank.io/entry-point/',
+            '/login': 'https://genobank.io/login/',
+            '/login/': 'https://genobank.io/login/'
         }
     },
 
@@ -270,6 +275,15 @@ function determineRedirectUrl(sourceUrl, isPermittee) {
                 return service.paths[pathname];
             }
 
+            // If coming from genobank.io homepage, route based on user type
+            if (hostname === 'genobank.io' && pathname === '/') {
+                const dashboardUrl = isPermittee
+                    ? 'https://genobank.io/consent/lab_biofile/'
+                    : 'https://genobank.io/consent/biofile/';
+                AuthDebugger.log('From homepage, routing to dashboard', dashboardUrl);
+                return dashboardUrl;
+            }
+
             // Use the service's default based on user type
             const redirectUrl = isPermittee && service.permittee
                 ? service.permittee
@@ -387,24 +401,48 @@ function checkExistingAuth() {
     if (userSignature && userWallet) {
         AuthDebugger.log('User already authenticated');
 
-        // Get return URL
+        // Get return URL from parameters
         const urlParams = new URLSearchParams(window.location.search);
         const returnUrl = urlParams.get('returnUrl') ||
                          urlParams.get('return_url') ||
                          urlParams.get('redirect');
 
-        if (returnUrl) {
-            // User is already authenticated AND has a return URL
-            const finalUrl = determineRedirectUrl(returnUrl, isPermittee === 'true');
-            AuthDebugger.log('Redirecting authenticated user to', finalUrl);
-
-            // Set a flag to prevent re-checking
-            sessionStorage.setItem('authRedirectInProgress', 'true');
-            window.location.href = finalUrl;
-            return true;
-        } else {
-            AuthDebugger.log('User authenticated but no return URL - showing login page');
+        // Also check if we have a stored config with source
+        const authConfig = sessionStorage.getItem('authConfig');
+        let configSource = null;
+        if (authConfig) {
+            try {
+                const config = JSON.parse(authConfig);
+                configSource = config.source;
+            } catch (e) {
+                AuthDebugger.log('Could not parse authConfig', e);
+            }
         }
+
+        // Determine where to redirect
+        const redirectTo = returnUrl || configSource;
+
+        if (redirectTo) {
+            // Check if the redirect is coming from a GenoBank domain
+            try {
+                const redirectUrl = new URL(redirectTo);
+                if (redirectUrl.hostname.endsWith('genobank.app') ||
+                    redirectUrl.hostname.endsWith('genobank.io')) {
+
+                    const finalUrl = determineRedirectUrl(redirectTo, isPermittee === 'true');
+                    AuthDebugger.log('Redirecting authenticated user to', finalUrl);
+
+                    // Set a flag to prevent re-checking
+                    sessionStorage.setItem('authRedirectInProgress', 'true');
+                    window.location.href = finalUrl;
+                    return true;
+                }
+            } catch (e) {
+                AuthDebugger.log('Invalid redirect URL', { redirectTo, error: e.message });
+            }
+        }
+
+        AuthDebugger.log('User authenticated but no valid redirect URL - showing login page');
     } else {
         AuthDebugger.log('User not authenticated');
     }
@@ -432,12 +470,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Store return URL information
+    // Store return URL information if we have a referrer from GenoBank
     const urlParams = new URLSearchParams(window.location.search);
-    const returnUrl = urlParams.get('returnUrl') ||
-                     urlParams.get('return_url') ||
-                     urlParams.get('redirect') ||
-                     document.referrer;
+    let returnUrl = urlParams.get('returnUrl') ||
+                   urlParams.get('return_url') ||
+                   urlParams.get('redirect');
+
+    // Only use referrer if no explicit returnUrl and referrer is from GenoBank
+    if (!returnUrl && document.referrer) {
+        try {
+            const referrerUrl = new URL(document.referrer);
+            if (referrerUrl.hostname.endsWith('genobank.app') ||
+                referrerUrl.hostname.endsWith('genobank.io')) {
+                returnUrl = document.referrer;
+                AuthDebugger.log('Using GenoBank referrer as return URL', returnUrl);
+            }
+        } catch (e) {
+            AuthDebugger.log('Invalid referrer', document.referrer);
+        }
+    }
 
     if (returnUrl) {
         AuthDebugger.log('Storing return URL', returnUrl);
