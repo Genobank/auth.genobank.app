@@ -1,5 +1,62 @@
-// GenoBank Smart Authentication Handler
+// GenoBank Smart Authentication Handler with Debug Logging
 // Intelligently routes users based on source application and user type
+
+// Persistent debug logger
+const AuthDebugger = {
+    logs: [],
+    maxLogs: 100,
+
+    log(message, data = null) {
+        const timestamp = new Date().toISOString();
+        const logEntry = {
+            timestamp,
+            message,
+            data,
+            url: window.location.href
+        };
+
+        this.logs.push(logEntry);
+        if (this.logs.length > this.maxLogs) {
+            this.logs.shift();
+        }
+
+        // Store in sessionStorage for persistence
+        sessionStorage.setItem('authDebugLogs', JSON.stringify(this.logs));
+
+        // Console output
+        console.log(`[AUTH ${timestamp}] ${message}`, data || '');
+    },
+
+    getLogs() {
+        const stored = sessionStorage.getItem('authDebugLogs');
+        if (stored) {
+            try {
+                this.logs = JSON.parse(stored);
+            } catch (e) {
+                console.error('Failed to parse stored logs:', e);
+            }
+        }
+        return this.logs;
+    },
+
+    clearLogs() {
+        this.logs = [];
+        sessionStorage.removeItem('authDebugLogs');
+    },
+
+    downloadLogs() {
+        const logsText = JSON.stringify(this.logs, null, 2);
+        const blob = new Blob([logsText], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `auth-debug-${Date.now()}.json`;
+        a.click();
+    }
+};
+
+// Make debugger globally available
+window.AuthDebugger = AuthDebugger;
 
 const GENOBANK_SERVICES = {
     // Main Services
@@ -130,6 +187,7 @@ function setAuthCookie(name, value, maxAge = AUTH_COOKIE_CONFIG.maxAge) {
     }
 
     document.cookie = cookieString;
+    AuthDebugger.log(`Set cookie: ${name}`, value.substring(0, 20) + '...');
 }
 
 function getCookie(name) {
@@ -142,6 +200,13 @@ function getCookie(name) {
 }
 
 function setAuthData(authData) {
+    AuthDebugger.log('Setting auth data', {
+        hasSignature: !!authData.user_signature,
+        hasWallet: !!authData.user_wallet,
+        isPermittee: authData.isPermittee,
+        method: authData.login_method
+    });
+
     const {
         user_signature,
         user_wallet,
@@ -179,11 +244,15 @@ function setAuthData(authData) {
 
 // Determine where to redirect based on source and user type
 function determineRedirectUrl(sourceUrl, isPermittee) {
+    AuthDebugger.log('Determining redirect URL', { sourceUrl, isPermittee });
+
     if (!sourceUrl) {
         // No source URL - use fallback based on user type
-        return isPermittee
+        const fallback = isPermittee
             ? 'https://genobank.io/consent/lab_biofile/'
             : 'https://genobank.io/consent/biofile/';
+        AuthDebugger.log('No source URL, using fallback', fallback);
+        return fallback;
     }
 
     try {
@@ -197,20 +266,25 @@ function determineRedirectUrl(sourceUrl, isPermittee) {
         if (service) {
             // Check if there's a specific path handler
             if (service.paths && service.paths[pathname]) {
+                AuthDebugger.log('Using specific path handler', service.paths[pathname]);
                 return service.paths[pathname];
             }
 
             // Use the service's default based on user type
-            return isPermittee && service.permittee
+            const redirectUrl = isPermittee && service.permittee
                 ? service.permittee
                 : service.default || sourceUrl;
+
+            AuthDebugger.log('Using service default', redirectUrl);
+            return redirectUrl;
         }
 
         // Unknown service - return to source
+        AuthDebugger.log('Unknown service, returning to source', sourceUrl);
         return sourceUrl;
 
     } catch (error) {
-        console.warn('Invalid source URL:', sourceUrl, error);
+        AuthDebugger.log('Invalid source URL', { sourceUrl, error: error.message });
         // Fallback to default dashboards
         return isPermittee
             ? 'https://genobank.io/consent/lab_biofile/'
@@ -220,14 +294,17 @@ function determineRedirectUrl(sourceUrl, isPermittee) {
 
 // Enhanced finishing login process
 async function smartFinishingLoginProcess(loginData) {
-    console.log('=== Smart Auth Handler ===');
-    console.log('Login data:', loginData);
+    AuthDebugger.log('Smart finishing login process started', {
+        hasSignature: !!loginData.user_signature,
+        isPermittee: loginData.isPermittee,
+        method: loginData.login_method
+    });
 
     // Store authentication data
     setAuthData(loginData);
 
     const config = getConfig();
-    console.log('Config:', config);
+    AuthDebugger.log('Config loaded', config);
 
     // Get the return URL from various sources
     const urlParams = new URLSearchParams(window.location.search);
@@ -244,50 +321,71 @@ async function smartFinishingLoginProcess(loginData) {
             if (referrerUrl.hostname.endsWith('genobank.app') ||
                 referrerUrl.hostname.endsWith('genobank.io')) {
                 returnUrl = document.referrer;
+                AuthDebugger.log('Using referrer as return URL', returnUrl);
             }
         } catch (e) {
-            console.warn('Invalid referrer:', document.referrer);
+            AuthDebugger.log('Invalid referrer', document.referrer);
         }
     }
 
-    console.log('Return URL:', returnUrl);
-    console.log('Is Permittee:', loginData.isPermittee);
+    AuthDebugger.log('Return URL determined', returnUrl);
 
     // Handle popup mode
     if (config?.isPopup) {
+        AuthDebugger.log('Popup mode - sending to parent');
         sendToParent(config?.source, loginData);
         return;
     }
 
     // Generate JWT for authentication
+    AuthDebugger.log('Generating JWT');
     const authJWT = await generateAuthJWT(loginData);
     if (!authJWT?.jwt) {
-        console.error('Failed to generate JWT');
-        // Still redirect but without JWT
+        AuthDebugger.log('Failed to generate JWT - continuing without it');
+    } else {
+        AuthDebugger.log('JWT generated successfully');
     }
 
     // Determine the final redirect URL
     const finalUrl = determineRedirectUrl(returnUrl, loginData.isPermittee);
-    console.log('Final redirect URL:', finalUrl);
+    AuthDebugger.log('Final redirect URL', finalUrl);
 
     // Add auth data to URL if JWT exists
     if (authJWT?.jwt) {
         const separator = finalUrl.includes('?') ? '&' : '?';
-        window.location.href = finalUrl + separator + 'data=' + btoa(authJWT.jwt);
+        const redirectUrl = finalUrl + separator + 'data=' + btoa(authJWT.jwt);
+        AuthDebugger.log('Redirecting with JWT', redirectUrl);
+        window.location.href = redirectUrl;
     } else {
         // Redirect without JWT - cookies should handle auth
+        AuthDebugger.log('Redirecting without JWT (using cookies)', finalUrl);
         window.location.href = finalUrl;
     }
 }
 
-// Check if user is already authenticated
+// Check if user is already authenticated - WITH REDIRECT PREVENTION
+let hasCheckedAuth = false;
+
 function checkExistingAuth() {
+    // Prevent multiple checks
+    if (hasCheckedAuth) {
+        AuthDebugger.log('Already checked auth, skipping');
+        return false;
+    }
+    hasCheckedAuth = true;
+
     const userSignature = getCookie('user_signature') || localStorage.getItem('user_signature');
     const userWallet = getCookie('user_wallet') || localStorage.getItem('user_wallet');
     const isPermittee = getCookie('isPermittee') || localStorage.getItem('isPermittee');
 
+    AuthDebugger.log('Checking existing auth', {
+        hasSignature: !!userSignature,
+        hasWallet: !!userWallet,
+        isPermittee: isPermittee
+    });
+
     if (userSignature && userWallet) {
-        console.log('User already authenticated');
+        AuthDebugger.log('User already authenticated');
 
         // Get return URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -296,12 +394,19 @@ function checkExistingAuth() {
                          urlParams.get('redirect');
 
         if (returnUrl) {
-            // User is already authenticated, redirect immediately
+            // User is already authenticated AND has a return URL
             const finalUrl = determineRedirectUrl(returnUrl, isPermittee === 'true');
-            console.log('Redirecting authenticated user to:', finalUrl);
+            AuthDebugger.log('Redirecting authenticated user to', finalUrl);
+
+            // Set a flag to prevent re-checking
+            sessionStorage.setItem('authRedirectInProgress', 'true');
             window.location.href = finalUrl;
             return true;
+        } else {
+            AuthDebugger.log('User authenticated but no return URL - showing login page');
         }
+    } else {
+        AuthDebugger.log('User not authenticated');
     }
 
     return false;
@@ -309,11 +414,18 @@ function checkExistingAuth() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('=== Auth Service Initialized ===');
-    console.log('Current URL:', window.location.href);
-    console.log('Referrer:', document.referrer);
+    AuthDebugger.log('=== Auth Service Initialized ===');
+    AuthDebugger.log('Current URL', window.location.href);
+    AuthDebugger.log('Referrer', document.referrer);
 
-    // Check if user is already authenticated
+    // Check if redirect is already in progress
+    if (sessionStorage.getItem('authRedirectInProgress') === 'true') {
+        AuthDebugger.log('Redirect in progress, clearing flag');
+        sessionStorage.removeItem('authRedirectInProgress');
+        return;
+    }
+
+    // Check if user is already authenticated (only on non-callback pages)
     if (!window.location.pathname.includes('oauth-callback')) {
         if (checkExistingAuth()) {
             return; // User is being redirected
@@ -328,7 +440,7 @@ document.addEventListener('DOMContentLoaded', function() {
                      document.referrer;
 
     if (returnUrl) {
-        console.log('Storing return URL:', returnUrl);
+        AuthDebugger.log('Storing return URL', returnUrl);
         const configData = {
             source: returnUrl,
             isPopup: false
@@ -336,6 +448,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Save for later use
         sessionStorage.setItem('authConfig', JSON.stringify(configData));
     }
+
+    // Add debug console helper
+    console.log('🔍 Auth Debugger Available - Use AuthDebugger.getLogs() to view logs, AuthDebugger.downloadLogs() to save');
 });
 
 // Export for use in custom.js
