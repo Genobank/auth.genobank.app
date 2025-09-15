@@ -204,6 +204,112 @@ function getCookie(name) {
     return null;
 }
 
+// Enhanced return URL storage for cross-domain support
+function storeReturnUrl(url) {
+    if (!url) return;
+
+    AuthDebugger.log('Storing return URL in multiple locations', url);
+
+    // Parse the URL to determine domain
+    try {
+        const urlObj = new URL(url);
+
+        // Store in cookie for appropriate domain
+        if (urlObj.hostname.endsWith('.genobank.app')) {
+            // For .genobank.app subdomains, use domain cookie
+            setAuthCookie('gb_return_url', url);
+            AuthDebugger.log('Stored in .genobank.app cookie');
+        } else if (urlObj.hostname.endsWith('.genobank.io') || urlObj.hostname === 'genobank.io') {
+            // For genobank.io, we can't use cookies cross-domain
+            // Store in localStorage and sessionStorage instead
+            AuthDebugger.log('Cross-domain scenario - using localStorage');
+        }
+    } catch (e) {
+        AuthDebugger.log('Invalid URL for return storage', e);
+    }
+
+    // Always store in localStorage (works on same domain)
+    localStorage.setItem('gb_return_url', url);
+
+    // Store timestamp to validate freshness
+    localStorage.setItem('gb_return_url_time', Date.now().toString());
+
+    // Store in sessionStorage for immediate use
+    const configData = {
+        source: url,
+        isPopup: false,
+        timestamp: Date.now()
+    };
+    sessionStorage.setItem('authConfig', JSON.stringify(configData));
+}
+
+// Get return URL from multiple sources with priority
+function getStoredReturnUrl() {
+    AuthDebugger.log('Looking for stored return URL');
+
+    // 1. Check URL parameters first (highest priority)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlReturn = urlParams.get('returnUrl') ||
+                     urlParams.get('return_url') ||
+                     urlParams.get('redirect');
+    if (urlReturn) {
+        AuthDebugger.log('Found return URL in URL params', urlReturn);
+        return urlReturn;
+    }
+
+    // 2. Check cookie (works for .genobank.app domains)
+    const cookieReturn = getCookie('gb_return_url');
+    if (cookieReturn) {
+        AuthDebugger.log('Found return URL in cookie', cookieReturn);
+        return cookieReturn;
+    }
+
+    // 3. Check localStorage with freshness (< 5 minutes old)
+    const localReturn = localStorage.getItem('gb_return_url');
+    const returnTime = localStorage.getItem('gb_return_url_time');
+    if (localReturn && returnTime) {
+        const age = Date.now() - parseInt(returnTime);
+        if (age < 300000) { // 5 minutes
+            AuthDebugger.log('Found fresh return URL in localStorage', localReturn);
+            return localReturn;
+        } else {
+            AuthDebugger.log('localStorage return URL is stale', { age: age / 1000 + ' seconds' });
+        }
+    }
+
+    // 4. Check sessionStorage config
+    const authConfig = sessionStorage.getItem('authConfig');
+    if (authConfig) {
+        try {
+            const config = JSON.parse(authConfig);
+            if (config.source) {
+                AuthDebugger.log('Found return URL in authConfig', config.source);
+                return config.source;
+            }
+        } catch (e) {
+            AuthDebugger.log('Could not parse authConfig', e);
+        }
+    }
+
+    // 5. Check referrer as last resort
+    if (document.referrer) {
+        try {
+            const referrerUrl = new URL(document.referrer);
+            if (referrerUrl.hostname.endsWith('.genobank.app') ||
+                referrerUrl.hostname.endsWith('.genobank.io') ||
+                referrerUrl.hostname === 'genobank.io') {
+                AuthDebugger.log('Using referrer as return URL', document.referrer);
+                return document.referrer;
+            }
+        } catch (e) {
+            AuthDebugger.log('Invalid referrer URL', e);
+        }
+    }
+
+    AuthDebugger.log('No stored return URL found');
+    return null;
+}
+
 function setAuthData(authData) {
     AuthDebugger.log('Setting auth data', {
         hasSignature: !!authData.user_signature,
@@ -401,41 +507,8 @@ function checkExistingAuth() {
     if (userSignature && userWallet) {
         AuthDebugger.log('User already authenticated');
 
-        // Get return URL from parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        let returnUrl = urlParams.get('returnUrl') ||
-                       urlParams.get('return_url') ||
-                       urlParams.get('redirect');
-
-        // Also check if we have a stored config with source
-        const authConfig = sessionStorage.getItem('authConfig');
-        let configSource = null;
-        if (authConfig) {
-            try {
-                const config = JSON.parse(authConfig);
-                configSource = config.source;
-                AuthDebugger.log('Found stored config source', configSource);
-            } catch (e) {
-                AuthDebugger.log('Could not parse authConfig', e);
-            }
-        }
-
-        // Determine where to redirect - prioritize URL params, then config, then referrer
-        let redirectTo = returnUrl || configSource;
-
-        // If still no redirect URL but we have a GenoBank referrer, use it
-        if (!redirectTo && document.referrer) {
-            try {
-                const referrerUrl = new URL(document.referrer);
-                if (referrerUrl.hostname.endsWith('genobank.app') ||
-                    referrerUrl.hostname.endsWith('genobank.io')) {
-                    redirectTo = document.referrer;
-                    AuthDebugger.log('Using referrer as redirect URL for authenticated user', redirectTo);
-                }
-            } catch (e) {
-                AuthDebugger.log('Could not parse referrer', e);
-            }
-        }
+        // Use our enhanced function to get return URL from multiple sources
+        const redirectTo = getStoredReturnUrl();
 
         if (redirectTo) {
             // Check if the redirect is coming from a GenoBank domain
@@ -477,7 +550,7 @@ function checkExistingAuth() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    AuthDebugger.log('=== Auth Service Initialized v2.1 ===');
+    AuthDebugger.log('=== Auth Service Initialized v2.2 (Cookie-Enhanced) ===');
     AuthDebugger.log('Current URL', window.location.href);
     AuthDebugger.log('Referrer', document.referrer);
 
@@ -492,7 +565,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
-    // Store return URL information FIRST if we have a referrer from GenoBank
+    // Store return URL information using our enhanced storage
     const urlParams = new URLSearchParams(window.location.search);
     let returnUrl = urlParams.get('returnUrl') ||
                    urlParams.get('return_url') ||
@@ -503,7 +576,8 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const referrerUrl = new URL(document.referrer);
             if (referrerUrl.hostname.endsWith('genobank.app') ||
-                referrerUrl.hostname.endsWith('genobank.io')) {
+                referrerUrl.hostname.endsWith('genobank.io') ||
+                referrerUrl.hostname === 'genobank.io') {
                 returnUrl = document.referrer;
                 AuthDebugger.log('Using GenoBank referrer as return URL', returnUrl);
             }
@@ -512,14 +586,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Use our enhanced storage function
     if (returnUrl) {
-        AuthDebugger.log('Storing return URL', returnUrl);
-        const configData = {
-            source: returnUrl,
-            isPopup: false
-        };
-        // Save for later use
-        sessionStorage.setItem('authConfig', JSON.stringify(configData));
+        storeReturnUrl(returnUrl);
     }
 
     // Check if user is already authenticated (only on non-callback pages)
