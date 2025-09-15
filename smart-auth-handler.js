@@ -477,7 +477,7 @@ function checkExistingAuth() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    AuthDebugger.log('=== Auth Service Initialized ===');
+    AuthDebugger.log('=== Auth Service Initialized v2.1 ===');
     AuthDebugger.log('Current URL', window.location.href);
     AuthDebugger.log('Referrer', document.referrer);
 
