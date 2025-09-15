@@ -1,5 +1,5 @@
 // GenoBank Authentication Custom Script
-// Unminified version to fix redirect issue
+// Smart authentication handler for all GenoBank services
 
 const genobank = new GenoBankLogin();
 genobank.init();
@@ -61,11 +61,23 @@ async function metamaskLogin(provider, messageToSign) {
     await window.ethereum.request({ 'method': 'eth_requestAccounts' });
     let signature = await provider.getSigner().signMessage(messageToSign);
     let userWallet = await provider.getSigner().getAddress();
+
+    // Check permittee status
+    let isPermittee = false;
+    try {
+        isPermittee = !!(await genobank.getValidatePermittee(userWallet));
+    } catch (e) {
+        console.warn('Could not validate permittee status:', e);
+    }
+
     return {
         'userSignature': signature,
+        'user_signature': signature, // Include both formats
         'userWallet': userWallet,
-        'isPermittee': !!(await genobank.getValidatePermittee(userWallet)),
-        'loginMethod': 'metamask'
+        'user_wallet': userWallet,
+        'isPermittee': isPermittee,
+        'loginMethod': 'metamask',
+        'login_method': 'metamask'
     };
 }
 
@@ -87,23 +99,38 @@ async function handleOAuthResult() {
     try {
         let magic = magicConstructor();
         $('#id-oauth-loading-text').html('Getting user data...');
+
         const result = await magic.oauth.getRedirectResult();
-        let isPermittee = await genobank.getValidatePermittee(result?.magic?.userMetadata?.publicAddress);
+
+        let isPermittee = false;
+        try {
+            isPermittee = await genobank.getValidatePermittee(result?.magic?.userMetadata?.publicAddress);
+        } catch (e) {
+            console.warn('Could not validate permittee status:', e);
+        }
+
         $('#id-oauth-loading-text').html('Generating signature...');
+
         const loginData = {
             'userSignature': await signAndVerify(MESSAGE_TO_SIGN, result?.magic?.userMetadata?.publicAddress),
+            'user_signature': await signAndVerify(MESSAGE_TO_SIGN, result?.magic?.userMetadata?.publicAddress),
             'userWallet': result?.magic?.userMetadata?.publicAddress,
+            'user_wallet': result?.magic?.userMetadata?.publicAddress,
             'isPermittee': isPermittee,
             'loginMethod': 'magic',
+            'login_method': 'magic',
             'magicToken': result?.magic?.idToken,
+            'magic_token': result?.magic?.idToken,
             'email': result?.oauth?.userInfo?.email,
             'name': result?.oauth?.userInfo?.name,
             'picture': result?.oauth?.userInfo?.picture
         };
+
         $('#id-oauth-loading-text').html('Finishing...');
         await finishingLoginProcess(loginData);
     } catch (error) {
-        console.error(error);
+        console.error('OAuth error:', error);
+        showErrorToast('Authentication failed. Please try again.');
     }
 }
 
@@ -111,6 +138,10 @@ async function loginUsingEmailHandler() {
     startLoadingButton('id-email-button');
     try {
         const email = $('#emailInput').val();
+        if (!email) {
+            showErrorToast('Please enter your email address');
+            return;
+        }
         await loginUsingEmail(email);
     } catch (error) {
         console.error('Error in loginUsingEmailHandler:', error);
@@ -125,55 +156,75 @@ async function loginUsingEmail(email) {
         const magic = magicConstructor();
         const token = await magic.auth.loginWithMagicLink({ 'email': email });
         const userInfo = await magic.user.getInfo();
-        let isPermittee = await genobank.getValidatePermittee(token?.magic?.userMetadata?.publicAddress);
+
+        let isPermittee = false;
+        try {
+            isPermittee = await genobank.getValidatePermittee(userInfo?.publicAddress);
+        } catch (e) {
+            console.warn('Could not validate permittee status:', e);
+        }
+
         const loginData = {
             'userSignature': await signAndVerify(window.MESSAGE_TO_SIGN, userInfo?.publicAddress),
+            'user_signature': await signAndVerify(window.MESSAGE_TO_SIGN, userInfo?.publicAddress),
             'userWallet': userInfo?.publicAddress,
-            'isPermittee': !!isPermittee,
+            'user_wallet': userInfo?.publicAddress,
+            'isPermittee': isPermittee,
             'loginMethod': 'magic_email',
+            'login_method': 'magic_email',
             'magicToken': token,
+            'magic_token': token,
             'email': userInfo?.email
         };
+
         await finishingLoginProcess(loginData);
     } catch (error) {
-        console.error(error);
+        console.error('Email login error:', error);
+        throw error;
     }
 }
 
 async function signAndVerify(message, publicAddress) {
     try {
-        if (!publicAddress) throw new Error('No account found in localStorage.');
+        if (!publicAddress) throw new Error('No account found.');
         const magic = magicConstructor();
         const web3 = new Web3(magic.rpcProvider);
         if (!(await magic.user.isLoggedIn())) throw new Error('User is not logged in with Magic.');
         return await web3.eth.personal.sign(message, publicAddress, '');
     } catch (error) {
         console.error('Error signing the message:', error);
+        throw error;
     }
 }
 
 async function finishingLoginProcess(loginData) {
+    // Use smart handler if available
+    if (window.smartFinishingLoginProcess) {
+        return await window.smartFinishingLoginProcess(loginData);
+    }
+
+    // Fallback to basic handler
     const config = getConfig();
-    console.log(config);
+    console.log('Auth config:', config);
 
     if (config.isPopup) {
         sendToParent(config?.source, loginData);
     } else {
         const authJWT = await generateAuthJWT(loginData);
-        // Check if we have a returnUrl parameter
         const urlParams = new URLSearchParams(window.location.search);
-        const returnUrl = urlParams.get('returnUrl') || config?.source;
+        const returnUrl = urlParams.get('returnUrl') ||
+                         urlParams.get('return_url') ||
+                         config?.source;
 
         if (returnUrl) {
-            // Redirect to the returnUrl with the auth data
             const separator = returnUrl.includes('?') ? '&' : '?';
-            window.location.href = returnUrl + separator + 'data=' + btoa(authJWT?.jwt);
+            window.location.href = returnUrl + separator + 'data=' + btoa(authJWT?.jwt || '');
         } else {
-            // Default redirect to consent page based on permittee status
+            // Fallback based on permittee status
             if (loginData.isPermittee) {
-                window.location.href = 'https://genobank.io/consent/lab_biofile/?data=' + btoa(authJWT?.jwt);
+                window.location.href = 'https://genobank.io/consent/lab_biofile/?data=' + btoa(authJWT?.jwt || '');
             } else {
-                window.location.href = 'https://genobank.io/consent/biofile/?data=' + btoa(authJWT?.jwt);
+                window.location.href = 'https://genobank.io/consent/biofile/?data=' + btoa(authJWT?.jwt || '');
             }
         }
     }
@@ -186,14 +237,18 @@ function sendToParent(source, loginData) {
 }
 
 async function generateAuthJWT(loginData) {
-    const url = new URL('https://genobank.app/generate_jwt');
-    return fetch(url, {
-        'method': 'POST',
-        'headers': { 'Content-Type': 'application/json' },
-        'body': JSON.stringify(loginData)
-    })
-    .then(response => response.json())
-    .catch(error => console.error('Error:', error));
+    try {
+        const url = new URL('https://genobank.app/generate_jwt');
+        const response = await fetch(url, {
+            'method': 'POST',
+            'headers': { 'Content-Type': 'application/json' },
+            'body': JSON.stringify(loginData)
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Error generating JWT:', error);
+        return null;
+    }
 }
 
 function getCurrentDomainWithPort() {
@@ -210,13 +265,31 @@ function saveConfig(data) {
 }
 
 function getConfig(key = false) {
+    // First check new storage
+    const authConfig = sessionStorage.getItem('authConfig');
+    if (authConfig) {
+        try {
+            const config = JSON.parse(authConfig);
+            return key !== false ? config[key] : config;
+        } catch (e) {
+            console.warn('Could not parse authConfig:', e);
+        }
+    }
+
+    // Fallback to old storage
     const encodedData = sessionStorage.getItem('data');
     if (!encodedData) {
         return {};
     }
-    const decoded = atob(encodedData).replace(/'/g, '"');
-    const config = JSON.parse(decoded);
-    return key !== false ? config[key] : config;
+
+    try {
+        const decoded = atob(encodedData).replace(/'/g, '"');
+        const config = JSON.parse(decoded);
+        return key !== false ? config[key] : config;
+    } catch (e) {
+        console.warn('Could not parse data:', e);
+        return {};
+    }
 }
 
 // Initialize - handle URL parameters properly
@@ -224,22 +297,23 @@ function getConfig(key = false) {
     try {
         const urlParams = new URLSearchParams(window.location.search);
         const dataParam = urlParams.get('data');
-        const returnUrl = urlParams.get('returnUrl');
+        const returnUrl = urlParams.get('returnUrl') ||
+                         urlParams.get('return_url') ||
+                         urlParams.get('redirect');
 
-        // If we have a returnUrl, save it for later use
+        // Save configuration
         if (returnUrl) {
             const configData = {
                 source: returnUrl,
                 isPopup: false
             };
+            sessionStorage.setItem('authConfig', JSON.stringify(configData));
+
+            // Also save in old format for compatibility
             saveConfig(btoa(JSON.stringify(configData).replace(/"/g, "'")));
         } else if (dataParam) {
-            // Save data parameter if present
             saveConfig(dataParam);
         }
-
-        // Don't redirect away - let the user authenticate
-        // The redirect to genobank.io was removed from here
 
     } catch (error) {
         console.error('Error in initialization:', error);
@@ -248,10 +322,21 @@ function getConfig(key = false) {
 
 // Handle OAuth callback
 document.addEventListener('DOMContentLoaded', function() {
+    // Check if already authenticated
+    if (window.checkExistingAuth) {
+        if (window.checkExistingAuth()) {
+            return; // User is being redirected
+        }
+    }
+
+    // Handle OAuth callback
     if (window.location.pathname === '/oauth-callback.html') {
         handleOAuthResult();
     }
 });
 
-// Export function for external use
+// Export for external use
 window.finishingLoginProcess = finishingLoginProcess;
+window.loginUsingMetamask = loginUsingMetamask;
+window.loginUsingGoogle = loginUsingGoogle;
+window.loginUsingEmailHandler = loginUsingEmailHandler;
